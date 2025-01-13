@@ -1,6 +1,6 @@
 # Address Standardization POC
 
-## Setup
+## Setup.
 
 Install the required dependencies:
 ```bash
