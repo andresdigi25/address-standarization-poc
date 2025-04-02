@@ -1,0 +1,5 @@
+FName,Surname,Email_Address,Extra_Field
+Alice,Smith,alice@example.com,
+Bob,Johnson,bob@example.com,should be ignored
+Charlie,Brown,charlie@example.com,
+delta,,,"New York"

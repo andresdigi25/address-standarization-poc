@@ -1,0 +1,58 @@
+[
+    {
+      "FacilityName": "Westside Medical Group",
+      "AddressLine1": "2200 Medical Plaza",
+      "AddressLine2": "Floor 5",
+      "City": "Westwood",
+      "StateCode": "CA",
+      "PostalCode": "90025",
+      "AuthType": "License",
+      "AuthID": "CA87654",
+      "ExpirationDate": "2026-04-15",
+      "FirstObserved": "2023-01-20",
+      "DataType": "Healthcare",
+      "TradeClass": "Group Practice"
+    },
+    {
+      "FacilityName": "Harbor Health Pharmacy",
+      "AddressLine1": "555 Coastal Highway",
+      "AddressLine2": "",
+      "City": "Harbor City",
+      "StateCode": "OR",
+      "PostalCode": "97415",
+      "AuthType": "Permit",
+      "AuthID": "OR54321",
+      "ExpirationDate": "2025-08-30",
+      "FirstObserved": "2022-09-15",
+      "DataType": "Pharmacy",
+      "TradeClass": "Independent"
+    },
+    {
+      "FacilityName": "Lakeland Rehabilitation Center",
+      "AddressLine1": "789 Recovery Road",
+      "AddressLine2": "Building D",
+      "City": "Lakeland",
+      "StateCode": "MN",
+      "PostalCode": "55044",
+      "AuthType": "Certification",
+      "AuthID": "MN12345",
+      "ExpirationDate": "2024-12-10",
+      "FirstObserved": "2022-06-22",
+      "DataType": "Healthcare",
+      "TradeClass": "Rehabilitation"
+    },
+    {
+      "FacilityName": "TechLab Diagnostics",
+      "AddressLine1": "300 Innovation Drive",
+      "AddressLine2": "Suite 150",
+      "City": "Tech Park",
+      "StateCode": "TX",
+      "PostalCode": "75001",
+      "AuthType": "Accreditation",
+      "AuthID": "TX67890",
+      "ExpirationDate": "2025-10-05",
+      "FirstObserved": "2023-03-12",
+      "DataType": "Laboratory",
+      "TradeClass": "Specialty"
+    }
+  ]

@@ -1,0 +1,6 @@
+FacilityName,AddressLine1,AddressLine2,City,StateCode,PostalCode,AuthType,AuthID,ExpirationDate,FirstObserved,DataType,TradeClass
+Oakwood Medical Center,800 Healthcare Parkway,Wing B,Oakville,MI,48864,License,MI98765,2025-09-30,2023-02-15,Healthcare,Hospital
+Sunrise Pharmacy Network,234 Wellness Avenue,,Beachside,FL,33140,Permit,FL45678,2024-11-22,2022-05-18,Pharmacy,Chain
+North Valley Urgent Care,567 Emergency Road,Suite 200,North Valley,AZ,85085,Certificate,AZ24680,2026-03-10,2023-01-05,Healthcare,Urgent Care
+Silver Springs Senior Living,901 Retirement Lane,,Silver Springs,NV,89441,License,NV13579,2025-05-12,2022-08-20,Healthcare,Long-term Care
+MetroBio Laboratories,345 Research Park,Building 3,Metroville,IL,60007,Accreditation,IL97531,2024-07-25,2022-11-03,Laboratory,Clinical

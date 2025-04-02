@@ -1,0 +1,11 @@
+address1_id,address1,address2_id,address2,similarity
+A1,"123 Main Street, Apt 4B, New York, NY 10001",B1,"123 Main St, #4B, New York, New York 10001",0.8615533064855116
+A2,"456 Oak Avenue, Suite 202, Los Angeles, CA 90001",B2,"456 Oak Ave. Ste 202, Los Angeles, California 90001",1.0
+A3,"789 Pine Road, Chicago, IL 60601",B3,"789 Pine Rd, Chicago, Illinois 60601",1.0
+A4,"321 Cedar Boulevard, San Francisco, CA 94101",B4,"321 Cedar Blvd, SF, CA 94101",0.8451838431838432
+A5,"555 Maple Lane, Boston, MA 02101",B5,"555 Maple Ln, Apt 3C, Boston, MA 02101",0.8741
+A6,"987 Elm Street, Unit 3C, Miami, FL 33101",B6,"987 Elm St, Unit 3C, Miami, Florida 33101",1.0
+A7,"654 Birch Drive, Seattle, WA 98101",B7,"654 Birch Dr., Seattle WA 98101",1.0
+A8,"234 Walnut Court, Apt 7D, Philadelphia, PA 19101",B8,"234 Walnut Ct Apartment 7D, Phila., PA 19101",0.8947292929292929
+A9,"876 Cherry Place, Denver, CO 80201",B9,"876 Cherry Pl., Denver Colorado 80201",1.0
+A10,"432 Spruce Way, Apartment 5A, Atlanta, GA 30301",B10,"432 Spruce Wy, Apt. 5A, Atlanta GA 30301",0.8985896317370001

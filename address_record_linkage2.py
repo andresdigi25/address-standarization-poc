@@ -7,7 +7,12 @@ from fuzzywuzzy import fuzz
 import usaddress
 import pickle
 import os
-from typing import List, Dict, Tuple, Any, Set
+import time
+import math
+import requests
+from geopy.distance import geodesic
+from geopy.geocoders import Nominatim
+from typing import List, Dict, Tuple, Any, Set, Optional
 
 class USAddressRecordLinkage:
     """
@@ -15,7 +20,7 @@ class USAddressRecordLinkage:
     point of care (POC) parent records with inventory atoms data.
     """
     
-    def __init__(self, model_path=None):
+    def __init__(self, model_path=None, smarty_auth_id=None, smarty_auth_token=None):
         """Initialize the record linkage system"""
         self.model = None
         if model_path and os.path.exists(model_path):
@@ -25,6 +30,17 @@ class USAddressRecordLinkage:
         # Constants
         self.HIGH_THRESHOLD = 0.85  # Definite match threshold
         self.LOW_THRESHOLD = 0.40   # Possible match threshold
+        
+        # Geocoding services
+        self.smarty_auth_id = smarty_auth_id
+        self.smarty_auth_token = smarty_auth_token
+        self.use_smartystreets = smarty_auth_id is not None and smarty_auth_token is not None
+        
+        # Set up Nominatim geocoder with appropriate user agent
+        self.geocoder = Nominatim(user_agent="healthcare_address_linkage")
+        
+        # Cache for geocoding results to minimize API calls
+        self.geocode_cache = {}
         
         # USPS standardization dictionaries
         self.street_suffix_map = {
@@ -254,6 +270,17 @@ class USAddressRecordLinkage:
         address_sim = fuzz.ratio(full_address_parent, full_address_atom) / 100.0
         features.append(address_sim)
         
+        # 10. Geospatial proximity feature
+        distance = self.calculate_geospatial_distance(parent, atom)
+        if distance is not None:
+            # Convert distance to a similarity score (closer = higher score)
+            # Use exponential decay: 1.0 for 0 meters, ~0.5 for 200 meters, close to 0 for 1000+ meters
+            geo_sim = math.exp(-distance / 500)  # Adjust the denominator to change sensitivity
+        else:
+            # If distance cannot be calculated, use neutral value
+            geo_sim = 0.5
+        features.append(geo_sim)
+        
         return features
 
     # STEP 4: MACHINE LEARNING APPROACH FOR CLASSIFICATION
@@ -290,9 +317,14 @@ class USAddressRecordLinkage:
         return proba
 
     # STEP 5: IMPLEMENTATION OF FULL RECORD LINKAGE PIPELINE
-    def link_records(self, poc_parents: List[Dict], inventory_atoms: List[Dict]) -> Dict:
+    def link_records(self, poc_parents: List[Dict], inventory_atoms: List[Dict], use_geocoding=True) -> Dict:
         """
         Main record linkage function that processes POC parents and inventory atoms
+        
+        Args:
+            poc_parents: List of parent POC records
+            inventory_atoms: List of inventory atom records
+            use_geocoding: Whether to geocode addresses for geospatial validation
         
         Returns a dictionary with definite matches, possible matches, and statistics
         """
@@ -300,6 +332,27 @@ class USAddressRecordLinkage:
         print("Standardizing records...")
         standardized_parents = [self.standardize_address(record) for record in poc_parents]
         standardized_atoms = [self.standardize_address(record) for record in inventory_atoms]
+        
+        # Step 1b: Geocode addresses if enabled
+        if use_geocoding:
+            print("Geocoding addresses...")
+            geocoded_parents = []
+            for record in standardized_parents:
+                geocoded_record = self.geocode_record(record)
+                geocoded_parents.append(geocoded_record)
+                # Respect rate limits for geocoding services
+                time.sleep(0.2)
+            
+            geocoded_atoms = []
+            for record in standardized_atoms:
+                geocoded_record = self.geocode_record(record)
+                geocoded_atoms.append(geocoded_record)
+                # Respect rate limits for geocoding services
+                time.sleep(0.2)
+            
+            # Replace standardized records with geocoded ones
+            standardized_parents = geocoded_parents
+            standardized_atoms = geocoded_atoms
         
         # Step 2: Create blocking keys
         print("Creating blocking keys...")
@@ -406,6 +459,165 @@ class USAddressRecordLinkage:
         
         return readable
     
+    # GEOSPATIAL VALIDATION METHODS
+    def geocode_address_smarty(self, record: Dict) -> Dict:
+        """
+        Geocode an address using SmartyStreets API
+        Returns latitude and longitude if successful
+        """
+        if not self.use_smartystreets:
+            return record
+        
+        # Check if we've already geocoded this address
+        address_str = record.get('address', '')
+        if address_str in self.geocode_cache:
+            result = self.geocode_cache[address_str]
+            record.update(result)
+            return record
+        
+        # Construct the API URL
+        base_url = "https://us-street.api.smartystreets.com/street-address"
+        
+        # Prepare query parameters
+        params = {
+            'auth-id': self.smarty_auth_id,
+            'auth-token': self.smarty_auth_token,
+            'street': address_str
+        }
+        
+        # Add city, state, zip if available
+        if 'city' in record:
+            params['city'] = record['city']
+        if 'state' in record:
+            params['state'] = record['state']
+        if 'zip5' in record:
+            params['zipcode'] = record['zip5']
+        
+        try:
+            # Make the API request
+            response = requests.get(base_url, params=params)
+            data = response.json()
+            
+            # Process the response
+            if data and len(data) > 0:
+                metadata = data[0].get('metadata', {})
+                if 'latitude' in metadata and 'longitude' in metadata:
+                    result = {
+                        'latitude': metadata['latitude'],
+                        'longitude': metadata['longitude'],
+                        'geocoded': True,
+                        'geocoder': 'smartystreets'
+                    }
+                    
+                    # Cache the result
+                    self.geocode_cache[address_str] = result
+                    
+                    # Update the record
+                    record.update(result)
+                    return record
+        
+        except Exception as e:
+            print(f"SmartyStreets geocoding error: {e}")
+        
+        # If we get here, geocoding failed
+        return record
+    
+    def geocode_address_nominatim(self, record: Dict) -> Dict:
+        """
+        Geocode an address using Nominatim (OpenStreetMap)
+        Falls back to this if SmartyStreets is not available or fails
+        """
+        # Check if we've already geocoded this address
+        address_str = record.get('address', '')
+        if address_str in self.geocode_cache:
+            result = self.geocode_cache[address_str]
+            record.update(result)
+            return record
+        
+        # Construct a well-formatted address for Nominatim
+        address_components = []
+        
+        if 'street_number' in record and 'street_name' in record:
+            address_components.append(f"{record['street_number']} {record['street_name']}")
+        elif 'address' in record:
+            address_components.append(record['address'])
+        
+        if 'city' in record:
+            address_components.append(record['city'])
+        
+        if 'state' in record:
+            address_components.append(record['state'])
+        
+        if 'zip5' in record:
+            address_components.append(record['zip5'])
+        
+        # Add USA as the country
+        address_components.append("USA")
+        
+        # Join components into a single string
+        query = ", ".join(address_components)
+        
+        try:
+            # Query Nominatim with rate limiting
+            location = self.geocoder.geocode(query)
+            time.sleep(1)  # Respect usage policy: max 1 request per second
+            
+            if location:
+                result = {
+                    'latitude': location.latitude,
+                    'longitude': location.longitude,
+                    'geocoded': True,
+                    'geocoder': 'nominatim'
+                }
+                
+                # Cache the result
+                self.geocode_cache[address_str] = result
+                
+                # Update the record
+                record.update(result)
+                return record
+        
+        except Exception as e:
+            print(f"Nominatim geocoding error: {e}")
+        
+        # If we get here, geocoding failed
+        record['geocoded'] = False
+        return record
+    
+    def geocode_record(self, record: Dict) -> Dict:
+        """
+        Geocode a record using available services (SmartyStreets first, then Nominatim)
+        """
+        # Try SmartyStreets first if available
+        if self.use_smartystreets:
+            result = self.geocode_address_smarty(record)
+            if result.get('geocoded', False):
+                return result
+        
+        # Fall back to Nominatim
+        return self.geocode_address_nominatim(record)
+    
+    def calculate_geospatial_distance(self, record1: Dict, record2: Dict) -> Optional[float]:
+        """
+        Calculate geospatial distance between two records in meters
+        Returns None if either record is not geocoded
+        """
+        # Ensure both records have geocoding information
+        if not record1.get('geocoded', False) or not record2.get('geocoded', False):
+            return None
+        
+        # Calculate distance using geodesic (more accurate than great circle)
+        try:
+            point1 = (record1['latitude'], record1['longitude'])
+            point2 = (record2['latitude'], record2['longitude'])
+            
+            # Calculate distance in meters
+            distance = geodesic(point1, point2).meters
+            return distance
+        except Exception as e:
+            print(f"Error calculating distance: {e}")
+            return None
+    
     def _explain_match(self, parent, atom, score):
         """Generate human-readable explanation for why records matched"""
         reasons = []
@@ -435,6 +647,14 @@ class USAddressRecordLinkage:
         # Check for Auth ID match
         if parent.get('auth_id') == atom.get('auth_id'):
             reasons.append(f"Matching Auth ID: {parent.get('auth_id')}")
+        
+        # Check for geospatial proximity if available
+        distance = self.calculate_geospatial_distance(parent, atom)
+        if distance is not None:
+            if distance < 100:  # Within 100 meters
+                reasons.append(f"Locations are very close: {distance:.1f} meters apart")
+            elif distance < 500:  # Within 500 meters
+                reasons.append(f"Locations are nearby: {distance:.1f} meters apart")
         
         # If no specific reasons found but high score
         if not reasons and score > 0.7:
@@ -485,6 +705,10 @@ class USAddressRecordLinkage:
 
 # Example usage
 def main():
+    # You would get these from environment variables or configuration
+    smarty_auth_id = None  # "YOUR_SMARTY_AUTH_ID"
+    smarty_auth_token = None  # "YOUR_SMARTY_AUTH_TOKEN"
+    
     # Sample data (would be loaded from CSV/database in practice)
     poc_parents = [
         {
@@ -538,8 +762,12 @@ def main():
         ('P002', 'A003')
     ]
     
-    # Initialize the record linkage system
-    linkage = USAddressRecordLinkage()
+    # Initialize the record linkage system with optional SmartyStreets credentials
+    linkage = USAddressRecordLinkage(
+        model_path=None,  # Path to pre-trained model if available
+        smarty_auth_id=smarty_auth_id,
+        smarty_auth_token=smarty_auth_token
+    )
     
     # Train the model
     print("Training model...")
@@ -569,15 +797,7 @@ def main():
         print(f"Matched to: {sample['atom_name']} at {sample['atom_address']}")
         print(f"Match score: {sample['match_score']}")
         print(f"Match reasons: {', '.join(sample['match_reasons'])}")
-        print("\nALL Match Results:")
-        for result in results['readable_matches']['definite_matches']:
-            print("------------------------------")
-            print(f"Parent: {sample['parent_name']} at {sample['parent_address']}")
-            print(f"Matched to: {sample['atom_name']} at {sample['atom_address']}")
-            print(f"Match score: {sample['match_score']}")
-            print(f"Match reasons: {', '.join(sample['match_reasons'])}")
+
 
 if __name__ == "__main__":
     main()
-
-# pip install pandas numpy scikit-learn fuzzywuzzy python-Levenshtein usaddress    

@@ -1,0 +1,24 @@
+[
+  {
+    "FName": "Alice",
+    "Surname": "Smith",
+    "Email_Address": "alice@example.com"
+  },
+  {
+    "first": "Bob",
+    "Last_Name": "Johnson",
+    "e-mail": "bob@example.com",
+    "Extra_Field": "should be ignored"
+  },
+  {
+    "fname": "Charlie",
+    "first": "ShouldNotOverride",
+    "surname": "Brown",
+    "email": "charlie@example.com"
+  },
+  {
+    "username": "delta",
+    "phone_number": "123-456-7890",
+    "city": "New York"
+  }
+]

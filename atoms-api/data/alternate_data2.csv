@@ -1,0 +1,5 @@
+FacilityName,AddressLine1,AddressLine2,City,StateCode,PostalCode,AuthType,AuthID,ExpirationDate,FirstObserved,DataType,TradeClass
+Medical Center West,789 Elm Boulevard,Building C,Rivertown,NY,10001,CERTIFICATION,NY54321,2025-12-31,2024-01-01,HEALTHCARE,CLINIC
+City Hospital,123 Main St,,Metropolis,ca,20001,certification,CA12345,invalid-date,2024-01-01,healthcare,clinic
+Community Clinic,456 Oak Street,Suite 100,Springfield,IL,62701,LICENSE,IL98765,2026-06-30,2024-02-15,OUTPATIENT,PRIMARY CARE
+Urgent Care Plus,789 Pine Road,,Riverside,CA,92501,PERMIT,CA45678,2024-12-31,2024-03-01,URGENT CARE,WALK-IN
